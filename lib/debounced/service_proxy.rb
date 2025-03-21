@@ -33,13 +33,13 @@ module Debounced
       end
     end
 
-    def debounce_activity(activity_descriptor, object, timeout)
+    def debounce_activity(activity_descriptor, timeout, callback)
       if socket.nil?
         log_debug("No connection to #{server_name}; skipping debounce step.")
-        trigger_callback(object)
+        callback.call
       else
-        log_debug("Sending #{object.inspect} to #{server_name}")
-        transmit(build_request(activity_descriptor, object, timeout))
+        log_debug("Debouncing #{activity_descriptor} to #{server_name}")
+        transmit(build_request(activity_descriptor, timeout, callback))
       end
     end
 
@@ -68,12 +68,14 @@ module Debounced
         log_debug("Parsed #{payload}")
         next unless payload['type'] == 'publishEvent'
 
-        trigger_callback(instantiate_debounced_object(payload['data']))
+        instantiate_callback(payload['callback']).call
       rescue IO::TimeoutError
         # Ignored - normal flow of loop: check abort_signal (L48), get data (L56), timeout waiting for data (69)
       end
     rescue StandardError => e
       log_warn("Unable to listen for messages from #{server_name}: #{e.message}")
+      log_warn(e.backtrace.join("\n"))
+    ensure
     end
 
     private
@@ -86,26 +88,15 @@ module Debounced
       @socket = nil
     end
 
-    def build_request(descriptor, object, timeout)
+    def build_request(descriptor, timeout, callback)
       {
         type: 'debounceEvent',
         data: {
-          timeout:,
           descriptor:,
-          klass: object.class.name,
-          attributes: extract_attributes(object)
+          timeout:,
+          callback: callback.as_json
         }
       }
-    end
-
-    def extract_attributes(object)
-      if object.respond_to?(:attributes)
-        object.attributes
-      else
-        object.instance_variables.each_with_object({}) do |var, hash|
-          hash[var.to_s.delete('@')] = object.instance_variable_get(var)
-        end
-      end
     end
 
     def transmit(request)
@@ -124,14 +115,8 @@ module Debounced
       JSON.parse(payload)
     end
 
-    def trigger_callback(object)
-      object.send(Debounced.configuration.callback_method)
-    end
-
-    def instantiate_debounced_object(data)
-      klass = Object.const_get(data['klass'])
-      data = data['attributes'].transform_keys(&:to_sym)
-      klass.new(**data)
+    def instantiate_callback(data)
+      Callback.json_create(data)
     end
 
     def socket_descriptor

@@ -8,4 +8,13 @@ class TestEvent
   def publish
     puts "Event #{@test_id} published"
   end
+
+  def debounce_callback
+    Debounced::Callback.new(
+      class_name: self.class.name,
+      params: { test_id: },
+      method_name: 'publish',
+      method_params: []
+    )
+  end
 end

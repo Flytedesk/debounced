@@ -6,8 +6,8 @@ require 'test_event'
 RSpec.describe 'Debounced Events', type: :integration do
   DEBOUNCE_TIMEOUT = 1
 
-  def debounce_activity(object)
-    @service_proxy.debounce_activity(object.test_id, object, DEBOUNCE_TIMEOUT)
+  def debounce_activity(test_object)
+    @service_proxy.debounce_activity(test_object.test_id, DEBOUNCE_TIMEOUT, test_object.debounce_callback)
   end
 
   before :all do

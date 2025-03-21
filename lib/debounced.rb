@@ -1,6 +1,7 @@
 require 'debounced/version'
 require 'debounced/railtie' if defined?(Rails)
 require 'debounced/service_proxy'
+require 'debounced/callback'
 require 'semantic_logger'
 
 module Debounced
@@ -17,12 +18,11 @@ module Debounced
   end
 
   class Configuration
-    attr_accessor :socket_descriptor, :wait_timeout, :callback_method, :logger
+    attr_accessor :socket_descriptor, :wait_timeout, :logger
 
     def initialize
       @socket_descriptor = ENV['DEBOUNCED_SOCKET'] || '/tmp/app.debounceEvents'
       @wait_timeout = ENV['DEBOUNCED_TIMEOUT']&.to_i || 3
-      @callback_method = :publish
       SemanticLogger.add_appender(file_name: 'debounced_proxy.log', formatter: :color)
       SemanticLogger.default_level = ENV.fetch('LOG_LEVEL', 'info')
       @logger = SemanticLogger['ServiceProxy']
