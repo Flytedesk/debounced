@@ -37,8 +37,8 @@ RSpec.describe 'Debounced Events', type: :integration do
 
     after :all do
       @event_debouncing_abort_signal.abort
-      sleep Debounced.configuration.wait_timeout
       Process.kill('TERM', @node_pid) if @node_pid
+      sleep Debounced.configuration.wait_timeout
     end
 
     before :each do
