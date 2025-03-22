@@ -11,8 +11,8 @@ RSpec.describe 'Debounced Events', type: :integration do
   end
 
   before :all do
+    SemanticLogger.default_level = 'debug'
     Debounced.configuration.wait_timeout = 1
-    Debounced.configuration.logger.default_level = 'debug'
     Debounced.configuration.socket_descriptor = '/tmp/test.debounceEvents'
   end
 
