@@ -18,8 +18,8 @@ RSpec.describe 'Debounced Events', type: :integration do
 
   before :each do
     @event_handler_invocations = 0
-    allow_any_instance_of(TestEvent).to receive(:publish) { @event_handler_invocations += 1 }
-    allow(TestEvent).to receive(:publish) { @event_handler_invocations += 1 }
+    allow_any_instance_of(TestEvent).to receive(:publish1) { @event_handler_invocations += 1 }
+    allow(TestEvent).to receive(:publish2) { @event_handler_invocations += 1 }
   end
 
   context 'with server running' do
@@ -86,11 +86,13 @@ RSpec.describe 'Debounced Events', type: :integration do
       context 'with callbacks on a class method' do
         it 'publishes all events' do
           # given
-          test_object = TestEvent.new(test_id: 'test')
-          callback = test_object.debounce_callback
-          callback.method_name = '.publish'
+          callback = Debounced::Callback.new(
+            class_name: TestEvent.name,
+            method_name: 'publish2',
+            args: ['test'],
+            )
           # when
-          @service_proxy.debounce_activity(test_object.test_id, DEBOUNCE_TIMEOUT, callback)
+          @service_proxy.debounce_activity('test', DEBOUNCE_TIMEOUT, callback)
           # then
           sleep DEBOUNCE_TIMEOUT + 0.5
           expect(@event_handler_invocations).to eq(1)

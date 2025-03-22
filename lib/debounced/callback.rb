@@ -1,53 +1,54 @@
 require 'debug'
 
 module Debounced
-  class Callback
 
-    attr_accessor :class_name, :params, :method_name, :method_params
+  ###
+  # Represents a callback to be executed by the debounce service
+  class Callback
+    attr_accessor :class_name, :method_name, :args, :kwargs
 
     ###
-    # Create a new callback object
-    # @param class_name [String] the name of the class to call the method on
-    # @param params [Hash] a hash of parameters to pass to the class initializer (optional)
-    # @param method_name [String] the name of the method to call.
-    #   If the method is a class method, it should be prefixed with a "."
-    #   If it is an instance method, it should be prefixed with a "#"
-    # @param method_params [Array] an array of parameters to pass to the method
-    # @return [Debounced::Callback]
-    # @note @params is ignored if the method is a class method
-    def initialize(class_name:, params:, method_name:, method_params:)
+    # @param [String] class_name the name of the class that will receive the callback
+    # @param [String] method_name the name of the method that will be called
+    # @param [Array] args the positional arguments to be passed to the method (optional)
+    # @param [Hash] kwargs the keyword arguments to be passed to the method (optional)
+    #
+    # @note if the class implements the method_name, the message will be sent to the class with the args and kwargs.
+    # otherwise, an instance of the class will be created and the message will be sent to the instance. in this case,
+    # the args and kwargs will be passed to the initializer.
+    def initialize(class_name:, method_name:, args: [], kwargs: {})
       @class_name = class_name.to_s
-      @params = params || {}
       @method_name = method_name.to_s
-      @method_params = method_params || []
+      @args = args
+      @kwargs = kwargs
     end
 
     def self.parse(data)
       new(
         class_name: data['class_name'],
-        params: data['params'],
         method_name: data['method_name'],
-        method_params: data['method_params']
+        args: data['args'],
+        kwargs: data['kwargs'].transform_keys(&:to_sym),
       )
     end
 
     def as_json
       {
         class_name:,
-        params:,
         method_name:,
-        method_params:
+        args:,
+        kwargs:,
       }
     end
 
     def call
       klass = Object.const_get(class_name)
-      message = method_name[1..-1] # strip of method_name prefix, either "." or "#"
-      target = klass
-      if method_name[0] == '#'
-        target = klass.new(**params.transform_keys(&:to_sym))
+      if klass.respond_to?(method_name)
+        klass.send(method_name, *args, **kwargs)
+      else
+        instance = klass.new(*args, **kwargs)
+        instance.send(method_name)
       end
-      target.send(message, *method_params)
     end
 
   end
