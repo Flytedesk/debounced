@@ -2,7 +2,6 @@ require "bundler/setup"
 require "debounced"
 SemanticLogger.add_appender(io: $stdout)
 
-
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = ".rspec_status"
