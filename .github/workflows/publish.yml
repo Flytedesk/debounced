@@ -18,40 +18,22 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.1'
+        ruby-version: '3.4'
         bundler-cache: true
     
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '22'
         cache: 'npm'
-    
-    - name: Install npm dependencies
-      run: npm ci
-    
+
     - name: Run tests
       run: bundle exec rspec
     
     - name: Build gem
       run: gem build *.gemspec
-    
-    - name: Setup RubyGems credentials
-      run: |
-        mkdir -p ~/.gem
-        echo "${{ secrets.RUBYGEMS_API_KEY }}" > ~/.gem/credentials
-        chmod 0600 ~/.gem/credentials
-    
-    - name: Publish to RubyGems
-      run: |
-        gem push $(ls *.gem)
 
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
+    - name: Publish to RubyGems
+      run: gem push $(ls *.gem)
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+        GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}

@@ -126,7 +126,7 @@ module Debounced
     def socket
       @socket ||= begin
         log_debug("Connecting to #{server_name} at #{socket_descriptor}")
-        UNIXSocket.new(socket_descriptor).tap { it.timeout = @wait_timeout }
+        UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = @wait_timeout }
       end
     rescue Errno::ECONNREFUSED, Errno::ENOENT
       ###

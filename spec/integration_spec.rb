@@ -11,7 +11,9 @@ RSpec.describe 'Debounced Events', type: :integration do
   end
 
   before :all do
+    SemanticLogger.default_level = 'debug'
     Debounced.configuration.wait_timeout = 1
+    Debounced.configuration.socket_descriptor = '/tmp/test.debounceEvents'
   end
 
   before :each do
@@ -24,7 +26,7 @@ RSpec.describe 'Debounced Events', type: :integration do
       gem_path = Pathname.new(Gem::Specification.find_by_name('debounced').gem_dir)
       debounce_event_server_log = File.open(gem_path.join('debounce_server.log'), 'w')
       gem_lib_path = gem_path.join('lib')
-      @node_pid = Process.spawn("NODE_ENV=test node #{gem_lib_path}/debounced/javascript/server.mjs",
+      @node_pid = Process.spawn("node #{gem_lib_path}/debounced/javascript/server.mjs #{Debounced.configuration.socket_descriptor}",
                                 out: debounce_event_server_log,
                                 err: debounce_event_server_log)
       Process.detach(@node_pid)
@@ -35,14 +37,14 @@ RSpec.describe 'Debounced Events', type: :integration do
       @service_proxy.listen(@event_debouncing_abort_signal)
     end
 
-    after :all do
-      @event_debouncing_abort_signal.abort
-      sleep Debounced.configuration.wait_timeout
-      Process.kill('TERM', @node_pid) if @node_pid
-    end
-
     before :each do
       @service_proxy.reset
+    end
+
+    after :all do
+      @event_debouncing_abort_signal.abort
+      Process.kill('TERM', @node_pid) if @node_pid
+      sleep 3
     end
 
     context 'and debounce = TRUE' do
