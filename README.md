@@ -1,6 +1,7 @@
 # Debounced
 
-A Ruby gem that provides a NodeJS-based event debouncing service for Ruby applications. It uses the JavaScript micro event loop to efficiently debounce events.
+Efficient debouncing mechanism for Ruby events. Use it for rate limiting, deduplication, or other 
+scenarios where you want to wait for a certain amount of time before processing a given event.
 
 ## Installation
 
@@ -26,15 +27,7 @@ $ gem install debounced
 
 This gem requires Node.js to be installed on your system, as it uses a Node.js server to handle the debouncing logic. You'll need:
 
-- Node.js >= 14.0.0
-- npm (to install the required node packages)
-
-After installing the gem, run:
-
-```bash
-$ cd $(bundle show debounced)
-$ npm install
-```
+- Node.js >= 20.0.0
 
 ## Usage
 
@@ -44,51 +37,70 @@ $ npm install
 # config/initializers/debounced.rb
 Debounced.configure do |config|
   config.socket_descriptor = '/tmp/my_app.debounceEvents'
+  config.wait_timeout = 3 # idle timeout in seconds for a given activity descriptor
 end
 ```
 
 ### Starting the server
 
-You can start the debounce server with:
+Start the nodeJS debounce server with:
 
 ```bash
-$ bundle exec debounced-server
+$ bundle exec debounced:server
 ```
 
-Or in your application code:
+In your Ruby application code:
 
 ```ruby
 require 'debounced'
 
-# Start the listener thread
+# Start a background thread to receive notification that events are ready to be handled after debounce wait is complete
 proxy = Debounced::ServiceProxy.new
-listener_thread = proxy.listen
+proxy.listen
 
-# Debounce an event
+# Define your event class; create a helper method that will produce a Debounced::Callback object, which 
+# is used to notify the server that the event is ready to be handled
 class MyEvent
-  attr_reader :attributes
+  attr_reader :test_id
 
-  def initialize(data)
-    @attributes = data
+  def initialize(test_id:)
+    @test_id = test_id
   end
 
-  def self.publish(data)
-    # Publish logic here
-    puts "Publishing event with data: #{data.inspect}"
+  def publish
+    # put logic here to publish the event after debouncing
+    puts "Publishing event: #{inspect}"
+  end
+  
+  def debounce_callback
+    Debounced::Callback.new(
+      class_name: self.class.name,
+      params: { test_id: },
+      method_name: 'publish',
+      method_params: []
+    )
   end
 end
 
-event = MyEvent.new({ id: 1, message: "Hello World" })
-proxy.debounce_event("my-event-123", event, 5) # Debounce for 5 seconds
+event = MyEvent.new({ test_id: "Hello World" })
+
+# request the server to debounce the event, ignoring it if another event with the 
+# same descriptor arrives before the timeout
+proxy.debounce_activity("my-event-123", 5, event.debounce_callback)
+# 2 seconds later
+proxy.debounce_activity("my-event-123", 5, event.debounce_callback)
+# 4 seconds later
+proxy.debounce_activity("my-event-123", 5, event.debounce_callback)
+# 5 seconds later the event is published!
+# > Publishing event: #<MyEvent:0x00007f9b1b8b3b40 @test_id="Hello World">
 ```
 
 ## How It Works
 
 1. The gem creates a Unix socket for communication between Ruby and Node.js
-2. When you call `debounce_event`, it sends the event to the Node.js server
-3. The Node.js server keeps track of events with the same descriptor
-4. If another event with the same descriptor arrives before the timeout, it resets the timer
-5. When the timeout expires, it sends the event back to Ruby to be published
+2. When you call `debounce_activity`, it sends the event to the Node.js server
+3. The Node.js server restarts a timer every time an event with a given activity_descriptor is received
+4. When the timeout expires, it sends the event back to Ruby to be published
 
 ## License
 
