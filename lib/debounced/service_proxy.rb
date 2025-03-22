@@ -116,7 +116,7 @@ module Debounced
     end
 
     def instantiate_callback(data)
-      Callback.json_create(data)
+      Callback.parse(data)
     end
 
     def socket_descriptor
