@@ -5,20 +5,19 @@ class TestEvent
     @test_id = test_id
   end
 
-  def publish
+  def publish1
     puts "Event #{@test_id} published"
   end
 
-  def self.publish
-    puts "Event #{@test_id} published"
+  def self.publish2(test_id)
+    puts "Event #{test_id} published"
   end
 
   def debounce_callback
     Debounced::Callback.new(
       class_name: self.class.name,
-      params: { test_id: },
-      method_name: '#publish',
-      method_params: []
+      method_name: 'publish1',
+      kwargs: { test_id: @test_id },
     )
   end
 end
