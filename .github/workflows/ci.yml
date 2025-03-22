@@ -36,3 +36,20 @@ jobs:
 
     - name: Run RSpec tests
       run: bundle exec rspec
+
+    - name: Capture system logs
+      if: always()
+      run: |
+        mkdir -p logs
+        cp debounced_proxy.log logs/ || true
+        cp debounce_server.log logs/ || true
+        echo "GitHub Actions runner environment" > logs/environment.log
+        env >> logs/environment.log
+
+    - name: Upload logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: ci-logs-${{ github.run_id }}
+        path: logs/
+        retention-days: 14
