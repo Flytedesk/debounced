@@ -6,11 +6,11 @@ class TestEvent
   end
 
   def publish1
-    puts "Event #{@test_id} published"
+    Debounced.configuration.logger.debug "Event #{@test_id} published"
   end
 
   def self.publish2(test_id)
-    puts "Event #{test_id} published"
+    Debounced.configuration.logger.debug "Event #{test_id} published"
   end
 
   def debounce_callback

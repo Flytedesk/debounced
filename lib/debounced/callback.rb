@@ -40,6 +40,7 @@ module Debounced
     end
 
     def call
+      Debounced.configuration.logger.debug("Invoking callback #{method_name}")
       klass = Object.const_get(class_name)
       if klass.respond_to?(method_name)
         klass.send(method_name, *args, **kwargs)
@@ -47,7 +48,9 @@ module Debounced
         instance = klass.new(*args, **kwargs)
         instance.send(method_name)
       end
+    rescue StandardError => e
+      Debounced.configuration.logger.warn("Unable to invoke callback #{as_json}: #{e.message}")
+      Debounced.configuration.logger.warn(e.backtrace.join("\n"))
     end
-
   end
 end

@@ -1,7 +1,7 @@
 require 'spec_helper'
 require 'pathname'
-require 'debounced/abort_signal'
 require 'test_event'
+require 'debug'
 
 RSpec.describe 'Debounced Events', type: :integration do
   DEBOUNCE_TIMEOUT = 1
@@ -31,21 +31,27 @@ RSpec.describe 'Debounced Events', type: :integration do
                                 out: debounce_event_server_log,
                                 err: debounce_event_server_log)
       Process.detach(@node_pid)
-      sleep 0.5 # wait for the server to start
-
-      @event_debouncing_abort_signal = Debounced::AbortSignal.new
-      @service_proxy = Debounced::ServiceProxy.new
-      @service_proxy.listen(@event_debouncing_abort_signal)
+      sleep 0.5
     end
 
     before :each do
-      @service_proxy.reset
+      @event_debouncing_abort_signal = Concurrent::AtomicBoolean.new
+      @service_proxy = Debounced::ServiceProxy.new
+      @listening_thread = @service_proxy.listen(@event_debouncing_abort_signal)
+    end
+
+    after :each do
+      Debounced.configuration.logger.info 'Sending abort to ServiceProxy#listen'
+      @event_debouncing_abort_signal.make_true
+      sleep Debounced.configuration.wait_timeout
+      @service_proxy.close
+      @listening_thread.exit
+      @listening_thread.join(1)
     end
 
     after :all do
-      @event_debouncing_abort_signal.abort
-      Process.kill('TERM', @node_pid) if @node_pid
-      sleep 3
+      Debounced.configuration.logger.info 'Terminating node process'
+      Process.kill('TERM', @node_pid)
     end
 
     context 'and debounce = TRUE' do
@@ -74,10 +80,20 @@ RSpec.describe 'Debounced Events', type: :integration do
       context 'and multiple events are published outside the debounce window' do
         it 'publishes all events' do
           # when
-          3.times do
-            debounce_activity(TestEvent.new(test_id: 'test'))
-            sleep DEBOUNCE_TIMEOUT + 0.5
-          end
+          Debounced.configuration.logger.info("Mutex is locked: #{@service_proxy.mutex.locked?}")
+          Debounced.configuration.logger.info("Mutex is owned: #{@service_proxy.mutex.owned?}")
+          debounce_activity(TestEvent.new(test_id: 'test'))
+          sleep(DEBOUNCE_TIMEOUT + 0.5)
+          Debounced.configuration.logger.info("Mutex is locked: #{@service_proxy.mutex.locked?}")
+          Debounced.configuration.logger.info("Mutex is owned: #{@service_proxy.mutex.owned?}")
+
+          debounce_activity(TestEvent.new(test_id: 'test'))
+          sleep(DEBOUNCE_TIMEOUT + 0.5)
+          Debounced.configuration.logger.info("Mutex is locked: #{@service_proxy.mutex.locked?}")
+          Debounced.configuration.logger.info("Mutex is owned: #{@service_proxy.mutex.owned?}")
+          debounce_activity(TestEvent.new(test_id: 'test'))
+          sleep(DEBOUNCE_TIMEOUT + 0.5)
+
           # then
           expect(@event_handler_invocations).to eq(3)
         end
