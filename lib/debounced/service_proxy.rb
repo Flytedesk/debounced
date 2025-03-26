@@ -144,7 +144,10 @@ module Debounced
     end
 
     def socket(&block)
-      @mutex.synchronize do
+      log_debug("waiting for mutex")
+      @mutex.lock
+      begin
+        log_debug("mutex acquired")
         unless @socket
           log_debug("Connecting to #{server_name} at #{socket_descriptor}")
           @socket = UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = @wait_timeout }
@@ -153,9 +156,12 @@ module Debounced
         if @socket && block_given?
           block.call(@socket)
         end
-
-        @socket
+      ensure
+        @mutex.unlock
+        Thread.pass
+        log_debug("mutex released")
       end
+      @socket
     rescue Errno::ECONNREFUSED, Errno::ENOENT
       ###
       # Errno::ENOENT is raised if the socket file does not exist.

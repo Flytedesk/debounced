@@ -17,9 +17,9 @@ RSpec.describe 'Debounced Events', type: :integration do
   end
 
   before :each do
-    @event_handler_invocations = 0
-    allow_any_instance_of(TestEvent).to receive(:publish1) { @event_handler_invocations += 1 }
-    allow(TestEvent).to receive(:publish2) { @event_handler_invocations += 1 }
+    @event_handler_invocations = Concurrent::AtomicFixnum.new
+    allow_any_instance_of(TestEvent).to receive(:publish1) { @event_handler_invocations.increment }
+    allow(TestEvent).to receive(:publish2) { @event_handler_invocations.increment }
   end
 
   context 'with server running' do
@@ -61,7 +61,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           3.times { debounce_activity(TestEvent.new(test_id: 'test')) }
           # then
           sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(1)
+          expect(@event_handler_invocations.value).to eq(1)
         end
       end
 
@@ -73,7 +73,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           debounce_activity(TestEvent.new(test_id: 'test3'))
           # then
           sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(3)
+          expect(@event_handler_invocations.value).to eq(3)
         end
       end
 
@@ -95,7 +95,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           sleep(DEBOUNCE_TIMEOUT + 0.5)
 
           # then
-          expect(@event_handler_invocations).to eq(3)
+          expect(@event_handler_invocations.value).to eq(3)
         end
       end
 
@@ -111,7 +111,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           @service_proxy.debounce_activity('test', DEBOUNCE_TIMEOUT, callback)
           # then
           sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(1)
+          expect(@event_handler_invocations.value).to eq(1)
         end
       end
     end
@@ -124,7 +124,7 @@ RSpec.describe 'Debounced Events', type: :integration do
       # when
       3.times { debounce_activity(TestEvent.new(test_id: 'no-server-test')) }
       # then
-      expect(@event_handler_invocations).to eq(3)
+      expect(@event_handler_invocations.value).to eq(3)
     end
   end
 end
