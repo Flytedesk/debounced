@@ -1,5 +1,6 @@
 require "bundler/setup"
 require "debounced"
+# SemanticLogger.add_appender(io: $stdout)
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

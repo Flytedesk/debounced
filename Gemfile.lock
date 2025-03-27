@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    debounced (1.0.1)
+    debounced (1.0.2)
       json (~> 2.10.2)
       semantic_logger (~> 4.15.0)
 

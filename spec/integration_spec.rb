@@ -53,6 +53,7 @@ RSpec.describe 'Debounced Events', type: :integration do
 
     after :all do
       Process.kill('TERM', @node_pid)
+      sleep 0.5
     end
 
     context 'and debounce = TRUE' do
