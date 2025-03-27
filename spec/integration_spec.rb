@@ -1,6 +1,5 @@
 require 'spec_helper'
 require 'pathname'
-require 'debounced/abort_signal'
 require 'test_event'
 
 RSpec.describe 'Debounced Events', type: :integration do
@@ -10,6 +9,11 @@ RSpec.describe 'Debounced Events', type: :integration do
     @service_proxy.debounce_activity(test_object.test_id, DEBOUNCE_TIMEOUT, test_object.debounce_callback)
   end
 
+  def stop_listening
+    @event_debouncing_abort_signal.make_true
+    sleep Debounced.configuration.wait_timeout
+  end
+
   before :all do
     SemanticLogger.default_level = 'debug'
     Debounced.configuration.wait_timeout = 1
@@ -17,9 +21,9 @@ RSpec.describe 'Debounced Events', type: :integration do
   end
 
   before :each do
-    @event_handler_invocations = 0
-    allow_any_instance_of(TestEvent).to receive(:publish1) { @event_handler_invocations += 1 }
-    allow(TestEvent).to receive(:publish2) { @event_handler_invocations += 1 }
+    @event_handler_invocations = Concurrent::AtomicFixnum.new
+    allow_any_instance_of(TestEvent).to receive(:publish1) { @event_handler_invocations.increment }
+    allow(TestEvent).to receive(:publish2) { @event_handler_invocations.increment }
   end
 
   context 'with server running' do
@@ -31,21 +35,25 @@ RSpec.describe 'Debounced Events', type: :integration do
                                 out: debounce_event_server_log,
                                 err: debounce_event_server_log)
       Process.detach(@node_pid)
-      sleep 0.5 # wait for the server to start
-
-      @event_debouncing_abort_signal = Debounced::AbortSignal.new
-      @service_proxy = Debounced::ServiceProxy.new
-      @service_proxy.listen(@event_debouncing_abort_signal)
+      sleep 0.5
     end
 
     before :each do
-      @service_proxy.reset
+      @event_debouncing_abort_signal = Concurrent::AtomicBoolean.new
+      @service_proxy = Debounced::ServiceProxy.new
+      @listening_thread = @service_proxy.listen(@event_debouncing_abort_signal)
+      sleep 0.5
+    end
+
+    after :each do
+      stop_listening
+      @listening_thread.exit
+      @listening_thread.join(1)
     end
 
     after :all do
-      @event_debouncing_abort_signal.abort
-      Process.kill('TERM', @node_pid) if @node_pid
-      sleep 3
+      Process.kill('TERM', @node_pid)
+      sleep 0.5
     end
 
     context 'and debounce = TRUE' do
@@ -54,8 +62,9 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           3.times { debounce_activity(TestEvent.new(test_id: 'test')) }
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(1)
+          sleep DEBOUNCE_TIMEOUT + 1
+          stop_listening
+          expect(@event_handler_invocations.value).to eq(1)
         end
       end
 
@@ -66,8 +75,9 @@ RSpec.describe 'Debounced Events', type: :integration do
           debounce_activity(TestEvent.new(test_id: 'test2'))
           debounce_activity(TestEvent.new(test_id: 'test3'))
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(3)
+          sleep DEBOUNCE_TIMEOUT + 1
+          stop_listening
+          expect(@event_handler_invocations.value).to eq(3)
         end
       end
 
@@ -76,10 +86,11 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           3.times do
             debounce_activity(TestEvent.new(test_id: 'test'))
-            sleep DEBOUNCE_TIMEOUT + 0.5
+            sleep DEBOUNCE_TIMEOUT + 1
           end
           # then
-          expect(@event_handler_invocations).to eq(3)
+          stop_listening
+          expect(@event_handler_invocations.value).to eq(3)
         end
       end
 
@@ -94,8 +105,9 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           @service_proxy.debounce_activity('test', DEBOUNCE_TIMEOUT, callback)
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
-          expect(@event_handler_invocations).to eq(1)
+          sleep DEBOUNCE_TIMEOUT + 1
+          stop_listening
+          expect(@event_handler_invocations.value).to eq(1)
         end
       end
     end
@@ -108,7 +120,7 @@ RSpec.describe 'Debounced Events', type: :integration do
       # when
       3.times { debounce_activity(TestEvent.new(test_id: 'no-server-test')) }
       # then
-      expect(@event_handler_invocations).to eq(3)
+      expect(@event_handler_invocations.value).to eq(3)
     end
   end
 end

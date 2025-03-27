@@ -1,6 +1,9 @@
 require "bundler/setup"
 require "debounced"
-SemanticLogger.add_appender(io: $stdout)
+
+if ENV['LOG_TO_STDOUT'] == 'true'
+  SemanticLogger.add_appender(io: $stdout)
+end
 
 RSpec.configure do |config|
   # Enable flags like --only-failures and --next-failure

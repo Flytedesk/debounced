@@ -1,8 +1,9 @@
 PATH
   remote: .
   specs:
-    debounced (1.0.1)
+    debounced (1.0.2)
       json (~> 2.10.2)
+      logger
       semantic_logger (~> 4.15.0)
 
 GEM
@@ -20,6 +21,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.10.2)
+    logger (1.7.0)
     pp (0.6.2)
       prettyprint
     prettyprint (0.2.0)

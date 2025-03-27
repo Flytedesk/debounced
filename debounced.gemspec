@@ -22,6 +22,7 @@ Gem::Specification.new do |gem|
   # # Dependencies
   gem.add_dependency "json", "~> 2.10.2"
   gem.add_dependency "semantic_logger", "~> 4.15.0"
+  gem.add_dependency 'logger'
 
   # Development dependencies
   gem.add_development_dependency "rspec", "~> 3.0"

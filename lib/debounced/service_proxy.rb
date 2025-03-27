@@ -10,10 +10,17 @@ module Debounced
   class ServiceProxy
     DELIMITER = "\f".freeze
 
+    attr_reader :logger, :wait_timeout, :listening
+
     def initialize
       @wait_timeout = Debounced.configuration.wait_timeout
+      @logger = Debounced.configuration.logger
+      @listening = false
+      @mutex = Mutex.new
     end
 
+    ###
+    # @param [Concurrent::AtomicBoolean] abort_signal set to true to stop listening for messages
     def listen(abort_signal = nil)
       Thread.new do
         receive(abort_signal)
@@ -22,58 +29,61 @@ module Debounced
 
     ###
     # Send message to server to reset its state. Useful for automated testing.
-    def reset
+    def reset_server
       if socket.nil?
-        log_debug("No connection to #{server_name}; unable to reset server.")
+        logger.warn("No connection to #{server_name}; unable to reset server.")
       else
-        log_debug("Resetting #{server_name}")
+        logger.trace { "Resetting #{server_name}" }
         transmit({ type: 'reset' })
       end
     end
 
     def debounce_activity(activity_descriptor, timeout, callback)
-      if socket.nil?
-        log_debug("No connection to #{server_name}; skipping debounce step.")
-        callback.call
-      else
-        log_debug("Debouncing #{activity_descriptor} to #{server_name}")
-        transmit(build_request(activity_descriptor, timeout, callback))
+      SemanticLogger.tagged("send") do
+        if !listening || socket.nil?
+          logger.debug { "No connection to #{server_name}; skipping debounce step." }
+          callback.call
+        else
+          logger.trace { "Sending #{activity_descriptor} to #{server_name}" }
+          transmit(build_request(activity_descriptor, timeout, callback))
+        end
       end
     end
 
+    ###
+    # @param [Concurrent::AtomicBoolean] abort_signal set to true to stop listening for messages
     def receive(abort_signal = nil)
-      log_debug("Listening for messages from #{server_name}...")
+      @abort_signal = abort_signal || Concurrent::AtomicBoolean.new
+      SemanticLogger.tagged("receive") do
+        logger.info { "Listening for messages from #{server_name}..." }
 
-      loop do
-        break if abort_signal&.set?
+        loop do
+          @listening = true
+          break if @abort_signal.true?
 
-        if socket.nil?
-          log_debug("Waiting for #{server_name} to start...")
-          sleep(@wait_timeout)
-          next
+          message = receive_message_from_server
+          next unless message
+
+          payload = deserialize_message(message)
+          raise SocketConflictError if payload['type'] == 'rejectClient'
+
+          instantiate_callback(payload['callback']).call
+        rescue Debounced::NoServerError => e
+          logger.debug e.message
+          sleep wait_timeout
         end
 
-        log_debug("Waiting for data from #{server_name}...")
-        message = socket.gets(DELIMITER, chomp: true)
-        if message.nil?
-          log_info("Server #{server_name} ended connection")
-          close
-          break
-        end
-
-        log_debug("Received #{message}")
-        payload = deserialize_payload(message)
-        log_debug("Parsed #{payload}")
-        next unless payload['type'] == 'publishEvent'
-
-        instantiate_callback(payload['callback']).call
-      rescue IO::TimeoutError
-        # Ignored - normal flow of loop: check abort_signal (L48), get data (L56), timeout waiting for data (69)
+        close
       end
-    rescue StandardError => e
-      log_warn("Unable to listen for messages from #{server_name}: #{e.message}")
-      log_warn(e.backtrace.join("\n"))
+    rescue SocketConflictError, StandardError => e
+      logger.warn("Unable to listen for messages from #{server_name}: #{e.message}")
+      logger.warn(e.backtrace.join("\n"))
     ensure
+      @listening = false
+    end
+
+    def stop
+      @abort_signal.make_true
     end
 
     private
@@ -81,9 +91,28 @@ module Debounced
     def close
       return unless @socket
 
-      log_info("Closing connection to #{server_name}")
+      logger.debug("Closing connection to #{server_name}")
       @socket.close
       @socket = nil
+    end
+
+    def receive_message_from_server
+      raise NoServerError, "#{server_name} at #{socket_descriptor} not running" if socket.nil?
+
+      logger.trace { "Waiting for data from #{server_name}..." }
+      message = socket.gets(DELIMITER, chomp: true)
+      unless message
+        close
+        sleep wait_timeout
+      end
+      message
+    rescue IO::TimeoutError
+      logger.trace { "Timeout waiting for data" }
+      sleep wait_timeout
+      nil
+    rescue Errno::EPIPE, IOError, Errno::ECONNRESET
+      close
+      raise NoServerError, "#{server_name} at #{socket_descriptor} not running"
     end
 
     def build_request(descriptor, timeout, callback)
@@ -97,20 +126,21 @@ module Debounced
       }
     end
 
-    def transmit(request)
-      socket.send serialize_payload(request), 0
+    def transmit(message)
+      socket.send serialize_message(message), 0
     end
 
     def server_name
       'DebounceEventServer'
     end
 
-    def serialize_payload(payload)
-      "#{JSON.generate(payload)}#{DELIMITER}" # inject EOM delimiter (form feed character)
+    def serialize_message(message)
+      "#{JSON.generate(message)}#{DELIMITER}" # inject EOM delimiter (form feed character)
     end
 
-    def deserialize_payload(payload)
-      JSON.parse(payload)
+    def deserialize_message(message)
+      logger.trace { "Deserializing #{message}" }
+      JSON.parse(message)
     end
 
     def instantiate_callback(data)
@@ -122,28 +152,17 @@ module Debounced
     end
 
     def socket
-      @socket ||= begin
-        log_debug("Connecting to #{server_name} at #{socket_descriptor}")
-        UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = @wait_timeout }
+      @mutex.synchronize do
+        return @socket if @socket
+
+        logger.trace { "Connecting to #{server_name} at #{socket_descriptor}" }
+        @socket = UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = wait_timeout }
       end
     rescue Errno::ECONNREFUSED, Errno::ENOENT
       ###
       # Errno::ENOENT is raised if the socket file does not exist.
       # Errno::ECONNREFUSED is raised if the socket file exists but no process is listening on it.
-      log_debug("#{server_name} is not running")
       nil
-    end
-    
-    def log_debug(message)
-      Debounced.configuration.logger.debug { message }
-    end
-    
-    def log_info(message)
-      Debounced.configuration.logger.info(message)
-    end
-    
-    def log_warn(message)
-      Debounced.configuration.logger.warn(message)
     end
   end
 end
