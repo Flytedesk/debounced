@@ -1,7 +1,6 @@
 require 'spec_helper'
 require 'pathname'
 require 'test_event'
-require 'debug'
 
 RSpec.describe 'Debounced Events', type: :integration do
   DEBOUNCE_TIMEOUT = 1
@@ -46,7 +45,6 @@ RSpec.describe 'Debounced Events', type: :integration do
     end
 
     after :each do
-      Debounced.configuration.logger.info 'Sending abort to ServiceProxy#listen'
       stop_listening
       @service_proxy.close
       @listening_thread.exit
@@ -54,7 +52,6 @@ RSpec.describe 'Debounced Events', type: :integration do
     end
 
     after :all do
-      Debounced.configuration.logger.info 'Terminating node process'
       Process.kill('TERM', @node_pid)
     end
 
