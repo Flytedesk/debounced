@@ -52,26 +52,25 @@ module Debounced
 
     ###
     # @param [Concurrent::AtomicBoolean] abort_signal set to true to stop listening for messages
-    def receive(abort_signal = Concurrent::AtomicBoolean.new)
-      @abort_signal = abort_signal
+    def receive(abort_signal = nil)
+      @abort_signal = abort_signal || Concurrent::AtomicBoolean.new
       SemanticLogger.tagged("receive") do
         logger.info { "Listening for messages from #{server_name}..." }
 
         loop do
+          @listening = true
           break if abort_signal&.true?
 
-          @listening = true
           message = receive_message_from_server
+          next unless message
+
           payload = deserialize_message(message)
-          next unless payload['type'] == 'publishEvent'
+          raise SocketConflictError if payload['type'] == 'rejectClient'
 
           instantiate_callback(payload['callback']).call
         rescue Debounced::NoServerError => e
           logger.debug e.message
           sleep wait_timeout
-        rescue IO::TimeoutError
-          # Ignored - normal flow of loop: check abort_signal (L48), get data (L56), timeout waiting for data (69)
-          logger.trace {"Timeout waiting for data" }
         end
 
         close
@@ -102,12 +101,18 @@ module Debounced
 
       logger.trace { "Waiting for data from #{server_name}..." }
       message = socket.gets(DELIMITER, chomp: true)
-      if message.nil?
+      unless message
         close
-        raise SocketConflictError, "#{server_name} at #{socket_descriptor} already connected to a client"
+        sleep wait_timeout
       end
-
       message
+    rescue IO::TimeoutError
+      logger.trace { "Timeout waiting for data" }
+      sleep wait_timeout
+      nil
+    rescue Errno::EPIPE, IOError, Errno::ECONNRESET
+      close
+      raise NoServerError, "#{server_name} at #{socket_descriptor} not running"
     end
 
     def build_request(descriptor, timeout, callback)

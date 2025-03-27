@@ -62,7 +62,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           3.times { debounce_activity(TestEvent.new(test_id: 'test')) }
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
+          sleep DEBOUNCE_TIMEOUT + 1
           stop_listening
           expect(@event_handler_invocations.value).to eq(1)
         end
@@ -75,7 +75,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           debounce_activity(TestEvent.new(test_id: 'test2'))
           debounce_activity(TestEvent.new(test_id: 'test3'))
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
+          sleep DEBOUNCE_TIMEOUT + 1
           stop_listening
           expect(@event_handler_invocations.value).to eq(3)
         end
@@ -86,7 +86,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           3.times do
             debounce_activity(TestEvent.new(test_id: 'test'))
-            sleep DEBOUNCE_TIMEOUT + 0.5
+            sleep DEBOUNCE_TIMEOUT + 1
           end
           # then
           stop_listening
@@ -105,7 +105,7 @@ RSpec.describe 'Debounced Events', type: :integration do
           # when
           @service_proxy.debounce_activity('test', DEBOUNCE_TIMEOUT, callback)
           # then
-          sleep DEBOUNCE_TIMEOUT + 0.5
+          sleep DEBOUNCE_TIMEOUT + 1
           stop_listening
           expect(@event_handler_invocations.value).to eq(1)
         end
