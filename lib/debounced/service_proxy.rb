@@ -59,7 +59,7 @@ module Debounced
 
         loop do
           @listening = true
-          break if abort_signal&.true?
+          break if @abort_signal.true?
 
           message = receive_message_from_server
           next unless message
@@ -83,7 +83,7 @@ module Debounced
     end
 
     def stop
-      @abort_signal&.make_true
+      @abort_signal.make_true
     end
 
     private
@@ -162,7 +162,6 @@ module Debounced
       ###
       # Errno::ENOENT is raised if the socket file does not exist.
       # Errno::ECONNREFUSED is raised if the socket file exists but no process is listening on it.
-      logger.debug { "#{server_name} is not running" }
       nil
     end
   end
