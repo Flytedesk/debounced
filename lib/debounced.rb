@@ -20,7 +20,7 @@ module Debounced
   end
 
   class Configuration
-    attr_accessor :socket_descriptor, :wait_timeout, :logger
+    attr_accessor :socket_descriptor, :wait_timeout, :logger, :enable_trace_logging
 
     def initialize
       @socket_descriptor = ENV['DEBOUNCED_SOCKET'] || '/tmp/app.debounceEvents'
@@ -28,6 +28,7 @@ module Debounced
       SemanticLogger.add_appender(file_name: 'debounced_proxy.log', formatter: :color)
       SemanticLogger.default_level = ENV.fetch('LOG_LEVEL', 'info')
       @logger = SemanticLogger['ServiceProxy']
+      @enable_trace_logging = ENV['TRACE_LOGGING'] == 'true'
     end
   end
 end

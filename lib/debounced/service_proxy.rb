@@ -33,7 +33,7 @@ module Debounced
       if socket.nil?
         logger.warn("No connection to #{server_name}; unable to reset server.")
       else
-        logger.trace { "Resetting #{server_name}" }
+        logger_trace { "Resetting #{server_name}" }
         transmit({ type: 'reset' })
       end
     end
@@ -44,7 +44,7 @@ module Debounced
           logger.debug { "No connection to #{server_name}; skipping debounce step." }
           callback.call
         else
-          logger.trace { "Sending #{activity_descriptor} to #{server_name}" }
+          logger_trace { "Sending #{activity_descriptor} to #{server_name}" }
           transmit(build_request(activity_descriptor, timeout, callback))
         end
       end
@@ -99,7 +99,7 @@ module Debounced
     def receive_message_from_server
       raise NoServerError, "#{server_name} at #{socket_descriptor} not running" if socket.nil?
 
-      logger.trace { "Waiting for data from #{server_name}..." }
+      logger_trace { "Waiting for data from #{server_name}..." }
       message = socket.gets(DELIMITER, chomp: true)
       unless message
         close
@@ -107,7 +107,7 @@ module Debounced
       end
       message
     rescue IO::TimeoutError
-      logger.trace { "Timeout waiting for data" }
+      logger_trace { "Timeout waiting for data" }
       sleep wait_timeout
       nil
     rescue Errno::EPIPE, IOError, Errno::ECONNRESET
@@ -139,7 +139,7 @@ module Debounced
     end
 
     def deserialize_message(message)
-      logger.trace { "Deserializing #{message}" }
+      logger_trace { "Deserializing #{message}" }
       JSON.parse(message)
     end
 
@@ -155,7 +155,7 @@ module Debounced
       @mutex.synchronize do
         return @socket if @socket
 
-        logger.trace { "Connecting to #{server_name} at #{socket_descriptor}" }
+        logger_trace { "Connecting to #{server_name} at #{socket_descriptor}" }
         @socket = UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = wait_timeout }
       end
     rescue Errno::ECONNREFUSED, Errno::ENOENT
@@ -164,5 +164,10 @@ module Debounced
       # Errno::ECONNREFUSED is raised if the socket file exists but no process is listening on it.
       nil
     end
+
+    def logger_trace(&block)
+      logger.debug(&block) if Debounced.configuration.enable_trace_logging
+    end
+
   end
 end

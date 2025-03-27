@@ -19,3 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.2] - 2025-03-26
 
 - Fixed bug where Ruby (proxy) would allow messages to be sent to Javascript (server), even if the Ruby (proxy) was not listening for messages from Javascript (server)
+
+## [1.0.3] - 2025-03-26
+
+- Avoid using a trace log level, which is not supported by the default Rails loggers.
