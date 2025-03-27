@@ -10,11 +10,12 @@ module Debounced
   class ServiceProxy
     DELIMITER = "\f".freeze
 
-    attr_reader :logger, :wait_timeout
+    attr_reader :logger, :wait_timeout, :listening
 
     def initialize
       @wait_timeout = Debounced.configuration.wait_timeout
       @logger = Debounced.configuration.logger
+      @listening = false
       @mutex = Mutex.new
     end
 
@@ -28,7 +29,7 @@ module Debounced
 
     ###
     # Send message to server to reset its state. Useful for automated testing.
-    def reset
+    def reset_server
       if socket.nil?
         logger.warn("No connection to #{server_name}; unable to reset server.")
       else
@@ -39,7 +40,7 @@ module Debounced
 
     def debounce_activity(activity_descriptor, timeout, callback)
       SemanticLogger.tagged("send") do
-        if socket.nil?
+        if !listening || socket.nil?
           logger.debug { "No connection to #{server_name}; skipping debounce step." }
           callback.call
         else
@@ -51,19 +52,21 @@ module Debounced
 
     ###
     # @param [Concurrent::AtomicBoolean] abort_signal set to true to stop listening for messages
-    def receive(abort_signal = nil)
+    def receive(abort_signal = Concurrent::AtomicBoolean.new)
+      @abort_signal = abort_signal
       SemanticLogger.tagged("receive") do
         logger.info { "Listening for messages from #{server_name}..." }
 
         loop do
           break if abort_signal&.true?
 
+          @listening = true
           message = receive_message_from_server
           payload = deserialize_message(message)
           next unless payload['type'] == 'publishEvent'
 
           instantiate_callback(payload['callback']).call
-        rescue Debounced::MissingConnectionError => e
+        rescue Debounced::NoServerError => e
           logger.debug e.message
           sleep wait_timeout
         rescue IO::TimeoutError
@@ -73,10 +76,18 @@ module Debounced
 
         close
       end
-    rescue StandardError => e
+    rescue SocketConflictError, StandardError => e
       logger.warn("Unable to listen for messages from #{server_name}: #{e.message}")
       logger.warn(e.backtrace.join("\n"))
+    ensure
+      @listening = false
     end
+
+    def stop
+      @abort_signal&.make_true
+    end
+
+    private
 
     def close
       return unless @socket
@@ -86,16 +97,14 @@ module Debounced
       @socket = nil
     end
 
-    private
-
     def receive_message_from_server
-      raise MissingConnectionError, "Waiting #{wait_timeout}s for #{server_name} to start..." if socket.nil?
+      raise NoServerError, "#{server_name} at #{socket_descriptor} not running" if socket.nil?
 
       logger.trace { "Waiting for data from #{server_name}..." }
       message = socket.gets(DELIMITER, chomp: true)
       if message.nil?
         close
-        raise MissingConnectionError, "#{server_name} ended connection"
+        raise SocketConflictError, "#{server_name} at #{socket_descriptor} already connected to a client"
       end
 
       message

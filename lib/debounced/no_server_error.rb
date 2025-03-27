@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 module Debounced
-  class MissingConnectionError < StandardError
+  class NoServerError < StandardError
   end
 end

@@ -42,11 +42,11 @@ RSpec.describe 'Debounced Events', type: :integration do
       @event_debouncing_abort_signal = Concurrent::AtomicBoolean.new
       @service_proxy = Debounced::ServiceProxy.new
       @listening_thread = @service_proxy.listen(@event_debouncing_abort_signal)
+      sleep 0.5
     end
 
     after :each do
       stop_listening
-      @service_proxy.close
       @listening_thread.exit
       @listening_thread.join(1)
     end

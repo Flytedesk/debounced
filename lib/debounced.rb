@@ -1,6 +1,7 @@
 require 'debounced/version'
 require 'debounced/railtie' if defined?(Rails)
-require 'debounced/missing_connection_error'
+require 'debounced/no_server_error'
+require 'debounced/socket_conflict_error'
 require 'debounced/service_proxy'
 require 'debounced/callback'
 require 'semantic_logger'
