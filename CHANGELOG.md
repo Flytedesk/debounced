@@ -23,3 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.3] - 2025-03-26
 
 - Avoid using a trace log level, which is not supported by the default Rails loggers.
+
+## [1.0.4] - 2025-04-11
+
+- Avoid using a debug log level for trace messages in a loop.
+- Lazy initialization of SemanticLogger, only if Gem configuration doesn't get another logger from host application.
