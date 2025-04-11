@@ -17,9 +17,9 @@ RSpec.configure do |config|
   end
 
   config.around(:each) do |example|
-    $logger = SemanticLogger[example.rerun_argument]
-    $logger.debug "Starting test: #{example.full_description}"
+    $logger = Debounced.configuration.logger
+    $logger.info "Starting test: #{example.full_description}"
     example.run
-    $logger.debug "Ending test"
+    $logger.info "Ending test"
   end
 end

@@ -69,7 +69,7 @@ module Debounced
 
           instantiate_callback(payload['callback']).call
         rescue Debounced::NoServerError => e
-          logger.debug e.message
+          logger_trace { e.message }
           sleep wait_timeout
         end
 
