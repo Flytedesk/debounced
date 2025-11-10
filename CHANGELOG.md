@@ -28,3 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Avoid using a debug log level for trace messages in a loop.
 - Lazy initialization of SemanticLogger, only if Gem configuration doesn't get another logger from host application.
+
+## [1.0.5] - 2025-11-11
+
+- Update dependencies.
