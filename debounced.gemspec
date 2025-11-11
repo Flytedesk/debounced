@@ -20,8 +20,8 @@ Gem::Specification.new do |gem|
   gem.require_paths = ["lib"]
 
   # # Dependencies
-  gem.add_dependency "json", "~> 2.10.2"
-  gem.add_dependency "semantic_logger", "~> 4.15.0"
+  gem.add_dependency "json", "~> 2.16.0"
+  gem.add_dependency "semantic_logger", "~> 4.17.0"
   gem.add_dependency 'logger'
 
   # Development dependencies
