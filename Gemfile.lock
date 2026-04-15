@@ -31,7 +31,7 @@ GEM
     psych (5.3.1)
       date
       stringio
-    rake (13.3.1)
+    rake (13.4.1)
     rdoc (7.2.0)
       erb
       psych (>= 4.0.0)
@@ -69,7 +69,7 @@ PLATFORMS
 DEPENDENCIES
   debounced!
   debug (~> 1.0, >= 1.0.0)
-  rake (~> 13.0)
+  rake (~> 13.4)
   rspec (~> 3.0)
   semantic_logger
 
