@@ -10,7 +10,7 @@ Gem::Specification.new do |gem|
   gem.description = "Leverage JavaScript micro-event loop to debounce events in Ruby applications"
   gem.homepage = "https://github.com/flytedesk/debounced"
   gem.license = "MIT"
-  gem.required_ruby_version = ">= 3.0.0"
+  gem.required_ruby_version = ">= 3.1.0"
 
   gem.metadata["source_code_uri"] = gem.homepage
   gem.metadata["changelog_uri"] = "#{gem.homepage}/blob/main/CHANGELOG.md"
