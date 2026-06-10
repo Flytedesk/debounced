@@ -13,6 +13,10 @@ class TestEvent
     Debounced.configuration.logger.debug "Event #{test_id} published"
   end
 
+  def publish3(label:)
+    Debounced.configuration.logger.debug "Event #{@test_id} published with label #{label}"
+  end
+
   def debounce_callback
     Debounced::Callback.new(
       class_name: self.class.name,
