@@ -3,32 +3,54 @@ module Debounced
   ###
   # Represents a callback to be executed by the debounce service
   class Callback
-    attr_accessor :class_name, :method_name, :args, :kwargs
+    attr_accessor :class_name, :method_name, :args, :kwargs, :method_args, :method_kwargs
 
     ###
     # @param [String] class_name the name of the class that will receive the callback
     # @param [String] method_name the name of the method that will be called
-    # @param [Array] args the positional arguments to be passed to the method (optional)
-    # @param [Hash] kwargs the keyword arguments to be passed to the method (optional)
+    # @param [Array] args positional arguments passed to the static method, or to the initializer for instance methods (optional)
+    # @param [Hash] kwargs keyword arguments passed to the static method, or to the initializer for instance methods (optional)
+    # @param [Array] method_args positional arguments passed to the instance method (optional, ignored for static methods)
+    # @param [Hash] method_kwargs keyword arguments passed to the instance method (optional, ignored for static methods)
     #
-    # @note if the class implements the method_name, the message will be sent to the class with the args and kwargs.
-    # otherwise, an instance of the class will be created and the message will be sent to the instance. in this case,
-    # the args and kwargs will be passed to the initializer.
-    def initialize(class_name:, method_name:, args: [], kwargs: {})
+    # @note if the class implements the method_name as a class method, the message will be sent to the class with args and kwargs.
+    # otherwise, an instance of the class will be created using args and kwargs, and the message will be sent to the instance
+    # with method_args and method_kwargs.
+    #
+    # @note args and kwargs values must be JSON-native types (String, Numeric, Boolean, Array, Hash, nil).
+    # Symbol values, Date, Time, and other Ruby-specific types will not survive JSON round-trip serialization
+    # through the debounce server. Hash keys are deep-symbolized on parse, but values are preserved as-is.
+    def initialize(class_name:, method_name:, args: [], kwargs: {}, method_args: [], method_kwargs: {})
       @class_name = class_name.to_s
       @method_name = method_name.to_s
       @args = args
       @kwargs = kwargs
+      @method_args = method_args
+      @method_kwargs = method_kwargs
     end
 
     def self.parse(data)
       new(
         class_name: data['class_name'],
         method_name: data['method_name'],
-        args: data['args'],
-        kwargs: data['kwargs'].transform_keys(&:to_sym),
+        args: data['args'] || [],
+        kwargs: deep_symbolize_keys(data['kwargs'] || {}),
+        method_args: data['method_args'] || [],
+        method_kwargs: deep_symbolize_keys(data['method_kwargs'] || {}),
       )
     end
+
+    def self.deep_symbolize_keys(object)
+      case object
+      when Hash
+        object.to_h { |key, value| [key.to_sym, deep_symbolize_keys(value)] }
+      when Array
+        object.map { |item| deep_symbolize_keys(item) }
+      else
+        object
+      end
+    end
+    private_class_method :deep_symbolize_keys
 
     def as_json
       {
@@ -36,17 +58,22 @@ module Debounced
         method_name:,
         args:,
         kwargs:,
+        method_args:,
+        method_kwargs:,
       }
     end
 
     def call
       Debounced.configuration.logger.debug("Invoking callback #{method_name}")
       klass = Object.const_get(class_name)
+      unless klass.ancestors.include?(Debounced::Callbackable)
+        raise ArgumentError, "#{class_name} is not an allowed Debounced callback target. Include Debounced::Callbackable in the class."
+      end
       if klass.respond_to?(method_name)
         klass.send(method_name, *args, **kwargs)
       else
         instance = klass.new(*args, **kwargs)
-        instance.send(method_name)
+        instance.send(method_name, *method_args, **method_kwargs)
       end
     rescue StandardError => e
       Debounced.configuration.logger.warn("Unable to invoke callback #{as_json}: #{e.message}")

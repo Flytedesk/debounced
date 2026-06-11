@@ -1,4 +1,6 @@
 class TestEvent
+  include Debounced::Callbackable
+
   attr_reader :test_id
 
   def initialize(test_id:)
@@ -11,6 +13,18 @@ class TestEvent
 
   def self.publish2(test_id)
     Debounced.configuration.logger.debug "Event #{test_id} published"
+  end
+
+  def self.publish4
+    Debounced.configuration.logger.debug 'Event published'
+  end
+
+  def publish3(label:)
+    Debounced.configuration.logger.debug "Event #{@test_id} published with label #{label}"
+  end
+
+  def publish5(label)
+    Debounced.configuration.logger.debug "Event #{@test_id} published with label #{label}"
   end
 
   def debounce_callback
