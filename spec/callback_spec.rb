@@ -90,6 +90,20 @@ RSpec.describe Debounced::Callback do
         end
       end
     end
+
+    context 'non-Callbackable class' do
+      it 'logs warning when target class does not include Callbackable' do
+        # given
+        stub_const('NonCallbackable', Class.new)
+        logger = instance_double(SemanticLogger::Logger, debug: nil)
+        allow(logger).to receive(:warn)
+        allow(Debounced.configuration).to receive(:logger).and_return(logger)
+        # when
+        described_class.new(class_name: 'NonCallbackable', method_name: 'run').call
+        # then
+        expect(logger).to have_received(:warn).with(/not an allowed Debounced callback target/)
+      end
+    end
   end
 
   describe '.parse / #as_json round-trip' do

@@ -1,4 +1,6 @@
 class TestEvent
+  include Debounced::Callbackable
+
   attr_reader :test_id
 
   def initialize(test_id:)
