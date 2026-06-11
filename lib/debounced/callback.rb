@@ -29,12 +29,24 @@ module Debounced
       new(
         class_name: data['class_name'],
         method_name: data['method_name'],
-        args: data['args'],
-        kwargs: data['kwargs'].transform_keys(&:to_sym),
-        method_args: data.fetch('method_args', []),
-        method_kwargs: (data['method_kwargs'] || {}).transform_keys(&:to_sym),
+        args: data['args'] || [],
+        kwargs: deep_symbolize_keys(data['kwargs'] || {}),
+        method_args: data['method_args'] || [],
+        method_kwargs: deep_symbolize_keys(data['method_kwargs'] || {}),
       )
     end
+
+    def self.deep_symbolize_keys(object)
+      case object
+      when Hash
+        object.to_h { |key, value| [key.to_sym, deep_symbolize_keys(value)] }
+      when Array
+        object.map { |item| deep_symbolize_keys(item) }
+      else
+        object
+      end
+    end
+    private_class_method :deep_symbolize_keys
 
     def as_json
       {

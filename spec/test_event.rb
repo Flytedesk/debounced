@@ -13,7 +13,15 @@ class TestEvent
     Debounced.configuration.logger.debug "Event #{test_id} published"
   end
 
+  def self.publish4
+    Debounced.configuration.logger.debug 'Event published'
+  end
+
   def publish3(label:)
+    Debounced.configuration.logger.debug "Event #{@test_id} published with label #{label}"
+  end
+
+  def publish5(label)
     Debounced.configuration.logger.debug "Event #{@test_id} published with label #{label}"
   end
 
