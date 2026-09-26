@@ -15,8 +15,8 @@ module ServerHelpers
     Process.spawn('node', SERVER_SCRIPT, socket_path, out: log, err: log)
   end
 
-  def stop_server(pid)
-    Process.kill('TERM', pid)
+  def stop_server(pid, signal: 'INT')
+    Process.kill(signal, pid)
     Process.wait(pid)
   rescue Errno::ESRCH, Errno::ECHILD
     nil
