@@ -96,6 +96,15 @@ context 'when a second server is started on the same socket' do
   end
 end
 
+it 'exits with a failure status when it cannot listen' do
+  # given
+  unusable_path = "/tmp/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.sock"
+  # when
+  status = exit_status(spawn_server(unusable_path), within: 3)
+  # then
+  expect(status&.success?).to be(false)
+end
+
   it 'removes the socket file when stopped' do
     # when
     stop_server(server_pid)
