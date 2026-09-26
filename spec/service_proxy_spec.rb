@@ -25,10 +25,8 @@ RSpec.describe Debounced::ServiceProxy do
     expect(logger).to have_received(:warn).with(/No connection to DebounceEventServer/)
   end
 it 'can be stopped before it starts listening' do
-  # when
-  stopping = -> { described_class.new.stop }
-  # then
-  expect(stopping).not_to raise_error
+  # when / then
+  expect { described_class.new.stop }.not_to raise_error
 end
 
   it 'lets several proxies listen to the same server' do

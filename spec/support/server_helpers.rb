@@ -32,10 +32,13 @@ module ServerHelpers
     end
   end
 
-  def socket_inode(socket_path)
-    File.stat(socket_path).ino if File.socket?(socket_path)
-  rescue Errno::ENOENT
-    nil
+  def wait_until_accepting(socket_path)
+    Timeout.timeout(5) do
+      UNIXSocket.new(socket_path).close
+    rescue Errno::ENOENT, Errno::ECONNREFUSED
+      sleep 0.05
+      retry
+    end
   end
 
   def write_message(connection, message)
