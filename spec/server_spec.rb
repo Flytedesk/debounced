@@ -53,6 +53,49 @@ RSpec.describe 'Debounce server' do
     expect(format('%o', mode)).to eq('600')
   end
 
+context 'when a stale socket file is left behind' do
+  let!(:server_pid) do
+    UNIXServer.new(socket_path).close
+    stale_inode = File.stat(socket_path).ino
+    spawn_server(socket_path).tap do
+      Timeout.timeout(5) { sleep 0.05 while [nil, stale_inode].include?(socket_inode(socket_path)) }
+    end
+  end
+
+  it 'replaces it and serves requests' do
+    # given
+    write_message(client, debounce_message('key'))
+    # when
+    message = read_message(client)
+    # then
+    expect(message&.fetch('type')).to eq('publishEvent')
+  end
+end
+
+context 'when a second server is started on the same socket' do
+  let!(:second_server_pid) { spawn_server(socket_path) }
+
+  after { stop_server(second_server_pid) }
+
+  it 'exits with a failure status' do
+    # when
+    status = exit_status(second_server_pid, within: 3)
+    # then
+    expect(status&.success?).to be(false)
+  end
+
+  it 'leaves the running server reachable after the second one stops' do
+    # given
+    exit_status(second_server_pid, within: 3)
+    stop_server(second_server_pid)
+    write_message(client, debounce_message('key'))
+    # when
+    message = read_message(client)
+    # then
+    expect(message&.fetch('type')).to eq('publishEvent')
+  end
+end
+
   it 'removes the socket file when stopped' do
     # when
     stop_server(server_pid)
