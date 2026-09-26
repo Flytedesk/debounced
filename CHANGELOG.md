@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Callbacks are only dispatched to public methods defined by the application, never to core Ruby methods
 - The server creates its socket owner-only, and the proxy refuses a socket owned by another user
 
+### Changed
+
+- Requires Node.js 22 or later; Node.js 18 and 20 are past end of life
+
 ### Fixed
 
 - A second server no longer takes over the socket of a running one, and only removes a socket it created
