@@ -24,4 +24,16 @@ RSpec.describe Debounced::ServiceProxy do
     # then
     expect(logger).to have_received(:warn).with(/No connection to DebounceEventServer/)
   end
+  it 'lets several proxies listen to the same server' do
+    # given
+    proxies = Array.new(2) { described_class.new }
+    threads = proxies.map(&:listen)
+    # when
+    sleep 0.5
+    # then
+    expect(proxies.map(&:listening)).to eq([true, true])
+  ensure
+    proxies.each(&:stop)
+    threads.each { _1.join(1) }
+  end
 end

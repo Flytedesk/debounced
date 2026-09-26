@@ -49,6 +49,22 @@ it 'keeps multi-byte characters intact when they arrive split across reads' do
   expect(read_message(client)&.dig('callback', 'kwargs', 'test_id')).to eq('Zoë')
 end
 
+context 'with several clients connected' do
+  let(:other_client) { UNIXSocket.new(socket_path) }
+
+  after { other_client.close }
+
+  it 'publishes to the client that sent the latest request for the descriptor' do
+    # given
+    write_message(client, debounce_message('key', kwargs: { test_id: 'first' }))
+    write_message(other_client, debounce_message('key', kwargs: { test_id: 'latest' }))
+    # when
+    message = read_message(other_client)
+    # then
+    expect(message&.dig('callback', 'kwargs', 'test_id')).to eq('latest')
+  end
+end
+
   it 'discards pending callbacks on reset' do
     # given
     write_message(client, debounce_message('key'))
