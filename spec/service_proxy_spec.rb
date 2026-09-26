@@ -24,10 +24,10 @@ RSpec.describe Debounced::ServiceProxy do
     # then
     expect(logger).to have_received(:warn).with(/No connection to DebounceEventServer/)
   end
-it 'can be stopped before it starts listening' do
-  # when / then
-  expect { described_class.new.stop }.not_to raise_error
-end
+  it 'can be stopped before it starts listening' do
+    # when / then
+    expect { described_class.new.stop }.not_to raise_error
+  end
 
   it 'lets several proxies listen to the same server' do
     # given
@@ -58,21 +58,21 @@ end
     proxy.stop
     thread.join(2)
   end
-it 'invokes the callback directly when the connection breaks while sending' do
-  # given
-  allow(TestEvent).to receive(:publish2)
-  proxy = described_class.new
-  thread = proxy.listen
-  sleep 0.3
-  allow_any_instance_of(UNIXSocket).to receive(:write).and_raise(Errno::EPIPE)
-  # when
-  proxy.debounce_activity('key', 5, Debounced::Callback.new(class_name: 'TestEvent', method_name: 'publish2', args: ['x']))
-  # then
-  expect(TestEvent).to have_received(:publish2).with('x')
-ensure
-  proxy.stop
-  thread.join(2)
-end
+  it 'invokes the callback directly when the connection breaks while sending' do
+    # given
+    allow(TestEvent).to receive(:publish2)
+    proxy = described_class.new
+    thread = proxy.listen
+    sleep 0.3
+    allow_any_instance_of(UNIXSocket).to receive(:write).and_raise(Errno::EPIPE)
+    # when
+    proxy.debounce_activity('key', 5, Debounced::Callback.new(class_name: 'TestEvent', method_name: 'publish2', args: ['x']))
+    # then
+    expect(TestEvent).to have_received(:publish2).with('x')
+  ensure
+    proxy.stop
+    thread.join(2)
+  end
 
   def invocations(queue, count, within:)
     deadline = Time.now + within
