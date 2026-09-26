@@ -27,7 +27,7 @@ $ gem install debounced
 
 This gem requires Node.js to be installed on your system, as it uses a Node.js server to handle the debouncing logic. You'll need:
 
-- Node.js >= 20.0.0
+- Node.js >= 22.0.0
 
 ## Usage
 

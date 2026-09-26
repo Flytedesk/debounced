@@ -48,6 +48,10 @@ module Debounced
           transmit(build_request(activity_descriptor, timeout, callback))
         end
       end
+    rescue IOError, SystemCallError, NoServerError => e
+      logger.warn("Unable to send #{activity_descriptor} to #{server_name} (#{e.message}); skipping debounce step.")
+      close
+      callback.call
     end
 
     ###
@@ -65,7 +69,6 @@ module Debounced
           next unless message
 
           payload = deserialize_message(message)
-          raise SocketConflictError if payload['type'] == 'rejectClient'
 
           instantiate_callback(payload['callback']).call
         rescue Debounced::NoServerError => e
@@ -75,7 +78,7 @@ module Debounced
 
         close
       end
-    rescue SocketConflictError, StandardError => e
+    rescue StandardError => e
       logger.warn("Unable to listen for messages from #{server_name}: #{e.message}")
       logger.warn(e.backtrace.join("\n"))
     ensure
@@ -83,17 +86,19 @@ module Debounced
     end
 
     def stop
-      @abort_signal.make_true
+      @abort_signal&.make_true
     end
 
     private
 
     def close
-      return unless @socket
+      @mutex.synchronize do
+        return unless @socket
 
-      logger.debug("Closing connection to #{server_name}")
-      @socket.close
-      @socket = nil
+        logger.debug("Closing connection to #{server_name}")
+        @socket.close
+        @socket = nil
+      end
     end
 
     def receive_message_from_server
@@ -108,7 +113,6 @@ module Debounced
       message
     rescue IO::TimeoutError
       logger_trace { "Timeout waiting for data" }
-      sleep wait_timeout
       nil
     rescue Errno::EPIPE, IOError, Errno::ECONNRESET
       close
@@ -127,7 +131,8 @@ module Debounced
     end
 
     def transmit(message)
-      socket.send serialize_message(message), 0
+      connection = socket or raise NoServerError, "#{server_name} at #{socket_descriptor} not running"
+      connection.write(serialize_message(message))
     end
 
     def server_name
@@ -154,6 +159,7 @@ module Debounced
     def socket
       @mutex.synchronize do
         return @socket if @socket
+        return unless File.owned?(socket_descriptor)
 
         logger_trace { "Connecting to #{server_name} at #{socket_descriptor}" }
         @socket = UNIXSocket.new(socket_descriptor).tap { |s| s.timeout = wait_timeout }

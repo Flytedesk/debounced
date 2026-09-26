@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         ruby: ['3.4', '4.0']
+        node: ['22', '24']
 
     steps:
     - uses: actions/checkout@v6
@@ -23,9 +24,9 @@ jobs:
         bundler-cache: true
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
-        node-version: '22'
+        node-version: ${{ matrix.node }}
 
     - name: Run syntax check for JavaScript files
       run: |
@@ -46,9 +47,9 @@ jobs:
 
     - name: Upload logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
-        name: ci-logs-${{ github.run_id }}
+        name: ci-logs-${{ github.run_id }}-ruby-${{ matrix.ruby }}-node-${{ matrix.node }}
         path: logs/
         retention-days: 14
         compression-level: 9
