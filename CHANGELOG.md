@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Callbacks are only dispatched to public methods defined by the application, never to core Ruby methods
+- The server creates its socket owner-only, and the proxy refuses a socket owned by another user
+
+### Fixed
+
+- A second server no longer takes over the socket of a running one, and only removes a socket it created
+- The server exits non-zero when it cannot listen
+- Multi-byte characters split across socket reads are no longer corrupted
+- The server serves any number of connected processes and publishes each callback to the process that requested it
+- The listener no longer adds an extra idle timeout before delivering a callback
+- Requests larger than the socket buffer are no longer truncated
+- A failed send falls back to invoking the callback instead of raising
+- `ServiceProxy#stop` works before `listen`
+
 ## [1.0.7](https://github.com/Flytedesk/debounced/compare/v1.0.6...v1.0.7) (2026-04-15)
 
 
