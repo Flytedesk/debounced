@@ -37,6 +37,18 @@ RSpec.describe 'Debounce server' do
     expect(messages.map { _1&.dig('callback', 'kwargs', 'test_id') }).to eq(['last', nil])
   end
 
+it 'keeps multi-byte characters intact when they arrive split across reads' do
+  # given
+  bytes = "#{JSON.generate(debounce_message('key', kwargs: { test_id: 'Zoë' }))}\f".b
+  split = bytes.index('ë'.b) + 1
+  # when
+  client.write(bytes.byteslice(0, split))
+  sleep 0.05
+  client.write(bytes.byteslice(split..))
+  # then
+  expect(read_message(client)&.dig('callback', 'kwargs', 'test_id')).to eq('Zoë')
+end
+
   it 'discards pending callbacks on reset' do
     # given
     write_message(client, debounce_message('key'))
