@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Each process's descriptors are debounced separately. When two processes debounced the same descriptor, the later
+  request cancelled the earlier process's callback; now each process gets its own callback, and a process's pending
+  callbacks are cancelled when it disconnects
+
+## [2.1.0] - 2026-09-26
+
 ### Security
 
 - Callbacks are only dispatched to public methods defined by the application, never to core Ruby methods
