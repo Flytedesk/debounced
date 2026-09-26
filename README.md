@@ -1,5 +1,9 @@
 # Debounced
 
+> **This repository is archived.** The `debounced` gem continues from 3.0 at
+> [Flytedesk/debounced-rb](https://github.com/Flytedesk/debounced-rb), with the debounce server written in Ruby
+> instead of Node.js. The 2.x line, which uses the Node.js server documented below, ends with 2.1.0.
+
 Efficient debouncing mechanism for Ruby events. Use it for rate limiting, deduplication, or other 
 scenarios where you want to wait for a certain amount of time before processing a given event.
 
