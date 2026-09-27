@@ -15,8 +15,8 @@ module ServerHelpers
     Process.spawn('node', SERVER_SCRIPT, socket_path, out: log, err: log)
   end
 
-  def stop_server(pid)
-    Process.kill('TERM', pid)
+  def stop_server(pid, signal: 'INT')
+    Process.kill(signal, pid)
     Process.wait(pid)
   rescue Errno::ESRCH, Errno::ECHILD
     nil
@@ -47,6 +47,11 @@ module ServerHelpers
     sent_at = monotonic_now
     write_message(connection, debounce_message(key, timeout:, kwargs: { key:, seq: }))
     sent_at
+  end
+
+  def wait_until_processed(connection)
+    debounce(connection, 'processed', 0)
+    Timeout.timeout(2) { nil until read_message(connection)&.dig('callback', 'kwargs', 'key') == 'processed' }
   end
 
   def collect_callbacks(connection, quiet_for: 0.6)
