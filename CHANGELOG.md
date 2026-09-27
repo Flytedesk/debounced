@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - On SIGTERM the server fires its pending timers on schedule, publishes new requests immediately, and exits once
   nothing is pending; SIGINT still exits immediately
-- `ServiceProxy#wait_for_server(timeout:)` waits for the server to close the connection, so a process can receive
-  the callbacks still pending when it shuts down
+- `ServiceProxy#stop(timeout:)` first waits up to `timeout` seconds for the server to close the connection, so a
+  process can receive the callbacks still pending when it shuts down
 
 ## [2.1.1] - 2026-09-26
 
