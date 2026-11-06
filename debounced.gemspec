@@ -10,7 +10,7 @@ Gem::Specification.new do |gem|
   gem.description = "Leverage JavaScript micro-event loop to debounce events in Ruby applications"
   gem.homepage = "https://github.com/flytedesk/debounced"
   gem.license = "MIT"
-  gem.required_ruby_version = ">= 3.1.0"
+  gem.required_ruby_version = ">= 3.2.0"
 
   gem.metadata["source_code_uri"] = gem.homepage
   gem.metadata["changelog_uri"] = "#{gem.homepage}/blob/main/CHANGELOG.md"
@@ -21,7 +21,7 @@ Gem::Specification.new do |gem|
 
   # # Dependencies
   gem.add_dependency "json", "~> 2.19"
-  gem.add_dependency "semantic_logger", "~> 4.17"
+  gem.add_dependency "semantic_logger", "~> 5.2"
   gem.add_dependency 'logger'
 
   # Development dependencies

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-06
+
+### Changed
+
+- Upgraded the `semantic_logger` dependency to `~> 5.2` (from `~> 4.17`). The gem now requires Ruby 3.2 or later, which Semantic Logger 5.0 needs
+
 ### Added
 
 - On SIGTERM the server fires its pending timers on schedule, publishes new requests immediately, and exits once
